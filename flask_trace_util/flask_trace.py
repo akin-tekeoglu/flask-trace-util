@@ -41,8 +41,11 @@ class _FlaskTrace:
             g.trace = config["extractor"]()
 
         @app.after_request
-        def destroy_session(*args):  # pylint: disable=unused-variable,unused-argument
+        def destroy_session(
+            response,
+        ):  # pylint: disable=unused-variable,unused-argument
             g.trace = None
+            return response
 
     def request(self, method, url, **kwargs):
         """Proxy request function which uses extracted trace field
@@ -56,7 +59,7 @@ class _FlaskTrace:
         """
         if "headers" not in kwargs:
             kwargs["headers"] = {}
-        (header_name, header_value) = self.config["delegator"]()
+        header_name, header_value = self.config["delegator"]()
         kwargs["headers"][header_name] = header_value
         return requests.request(method, url, **kwargs)
 
