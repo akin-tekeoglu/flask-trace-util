@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="flask-trace",
+    name="flask-trace-util",
     version="0.0.1",
     author="Akın Tekeoğlu",
     author_email="akin.tekeoglu@gmail.com",
