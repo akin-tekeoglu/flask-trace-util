@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="flask-trace-util",
-    version="0.0.2",
+    version="0.0.4",
     author="Akın Tekeoğlu",
     author_email="akin.tekeoglu@gmail.com",
     description="Trace utility for flask",

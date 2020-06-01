@@ -56,7 +56,7 @@ class _FlaskTrace:
         """
         if "headers" not in kwargs:
             kwargs["headers"] = {}
-        (header_name, header_value) = self.config["delegator"](g.trace)
+        (header_name, header_value) = self.config["delegator"]()
         kwargs["headers"][header_name] = header_value
         return requests.request(method, url, **kwargs)
 
