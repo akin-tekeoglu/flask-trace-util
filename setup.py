@@ -8,10 +8,10 @@ setuptools.setup(
     version="0.0.1",
     author="Akın Tekeoğlu",
     author_email="akin.tekeoglu@gmail.com",
-    description="A small example package",
+    description="Trace utility for flask",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject",
+    #url="https://github.com/pypa/sampleproject",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3.7",
@@ -19,4 +19,4 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.7',
-)
+    install_requires=['Flask', 'requests'])

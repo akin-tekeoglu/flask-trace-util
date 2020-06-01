@@ -1,0 +1,13 @@
+{
+  "python.pythonPath": ".venv/bin/python",
+  "python.pipenvPath": "pipenv",
+  "python.venvPath": ".venv",
+  "python.formatting.provider": "black",
+  "python.formatting.blackPath": ".venv/bin/black",
+  "python.linting.pylintPath": ".venv/bin/pylint",
+  "python.linting.pylintUseMinimalCheckers": false,
+  "python.linting.pylintEnabled": true,
+  "python.linting.enabled": true,
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true
+}
