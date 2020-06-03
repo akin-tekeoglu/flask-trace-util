@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="flask-trace-util",
-    version="0.2.0",
+    version="0.2.3",
     author="Akın Tekeoğlu",
     author_email="akin.tekeoglu@gmail.com",
     description="Trace utility for flask",
@@ -22,5 +22,5 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.7",
-    install_requires=["Flask", "requests"],
+    install_requires=["Flask", "requests", "opencensus", "opencensus-ext-stackdriver",],
 )
