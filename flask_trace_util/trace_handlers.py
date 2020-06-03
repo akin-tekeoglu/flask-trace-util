@@ -45,10 +45,16 @@ class GCloudGunicornAccesLogger(GunicornLogger):
         GunicornLogger {type} -- flask trace util GunicornLogger
     """
 
-    def get_custom_variables(self, *args):
+    project_id = None
+
+    def get_custom_variables(self, resp, req):
         """Returns custom variables for acces logging
 
         Returns:
             dict -- custom env variables
         """
-        return {"logging.googleapis.com/trace": g.trace}
+        trace = ""
+        for k, value in req.headers:
+            if k == "X-Cloud-Trace-Context":
+                trace = f"projects/{self.project_id}/traces/{value.split('/')[0]}"
+        return {"logging.googleapis.com/trace": trace}
