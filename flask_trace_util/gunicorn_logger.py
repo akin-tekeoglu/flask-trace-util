@@ -2,6 +2,7 @@
 Contains Gunicorn specific loggers
 """
 import json
+from datetime import datetime
 import traceback
 from gunicorn.glogging import Logger
 from flask_trace_util.util import extract_gcloud_trace
@@ -62,10 +63,9 @@ class GunicornLogger(Logger):
             or (self.cfg.syslog and not self.cfg.disable_redirect_access_to_syslog)
         ):
             return
-
-        safe_atoms = self.atoms_wrapper_class(
-            self.atoms(resp, req, environ, request_time)
-        )
+        atoms = self.atoms(resp, req, environ, request_time)
+        atoms["t"] = str(datetime.utcnow())
+        safe_atoms = self.atoms_wrapper_class(atoms)
 
         try:
             self.access_log.info(access_log_format, safe_atoms)

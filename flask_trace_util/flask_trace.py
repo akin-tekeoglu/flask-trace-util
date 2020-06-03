@@ -7,30 +7,41 @@ from flask_trace_util.util import extract_gcloud_trace
 
 
 class _FlaskTrace:
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.app = None
-        self.extractor = None
-        self.delegator = None
+        self.extractor = kwargs.get("extractor")
+        self.delegator = kwargs.get("delegator")
+        self.user_id_extractor = kwargs.get("user_id_extractor")
+        self.user_id_delegator = kwargs.get("user_id_delegator")
 
-    def init_app(self, app, extractor=None, delegator=None):
+    def init_app(self, app, **kwargs):
         """
             Init app
         """
         self.app = app
-        self.extractor = extractor = extractor
-        self.delegator = delegator
-        if app is None:
+        self.extractor = kwargs.get("extractor") or self.extractor
+        self.delegator = kwargs.get("delegator") or self.delegator
+        self.user_id_extractor = (
+            kwargs.get("user_id_extractor") or self.user_id_extractor
+        )
+        self.user_id_delegator = (
+            kwargs.get("user_id_delegator") or self.user_id_delegator
+        )
+
+        if self.app is None:
             raise Exception("app cant be None")
 
-        if extractor is None:
+        if self.extractor is None:
             raise Exception("extractor cant be None")
 
-        if delegator is None:
+        if self.delegator is None:
             raise Exception("delegator cant be None")
 
         @app.before_request
         def init_session():  # pylint: disable=unused-variable
-            g.trace = extractor()
+            g.trace = self.extractor()
+            if self.user_id_extractor:
+                g.user_id = self.user_id_extractor()
 
         @app.after_request
         def destroy_session(
@@ -53,6 +64,9 @@ class _FlaskTrace:
             kwargs["headers"] = {}
         header_name, header_value = self.delegator()
         kwargs["headers"][header_name] = header_value
+        if self.user_id_delegator:
+            u_header_name, u_header_value = self.user_id_delegator()
+            kwargs["headers"][u_header_name] = u_header_value
         return requests.request(method, url, **kwargs)
 
 
@@ -79,10 +93,33 @@ def gcloud_trace_delegator():
     """
 
     def delegator():
+        trace = ""
         if g.trace:
-            header = g.trace.split("/")[-1]
-            return "X-Cloud-Trace-Context", header
-        else:
-            return "X-Cloud-Trace-Context", ""
+            trace = g.trace.split("/")[-1]
+        return "X-Cloud-Trace-Context", trace
+
+    return delegator
+
+
+def simple_user_id_extractor():
+    """Simple user_id extractor
+    """
+
+    def extractor():
+        user_id = request.headers.get("X-User-Id")
+        return user_id
+
+    return extractor
+
+
+def simple_user_id_delegator():
+    """Simple user_id delegator
+    """
+
+    def delegator():
+        user_id = ""
+        if g.user_id:
+            user_id = g.user_id
+        return "X-User-Id", user_id
 
     return delegator
