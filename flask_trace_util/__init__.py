@@ -15,7 +15,7 @@ from .flask_trace import (
 )
 
 
-sde = StackdriverExporter(transport=AsyncTransport)
+sde = StackdriverExporter()
 
 
 delegators = trace_delegator(

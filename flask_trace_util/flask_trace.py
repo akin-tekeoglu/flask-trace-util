@@ -33,6 +33,8 @@ class _FlaskTrace:
 
         @app.before_request
         def init_session():  # pylint: disable=unused-variable
+            if request.path == "/":
+                return
             trace_context = self.extractor()
             if "tracer" in trace_context:
                 trace_context["tracer"].start_span(name=request.url)
@@ -42,7 +44,7 @@ class _FlaskTrace:
         def destroy_session(
             response,
         ):  # pylint: disable=unused-variable,unused-argument
-            if g.trace_context and "tracer" in g.trace_context:
+            if hasattr(g, "trace_context") and "tracer" in g.trace_context:
                 g.trace_context["tracer"].tracer.finish()
             return response
 
@@ -83,7 +85,7 @@ def user_id_delegator():
 
     def delegator():
         user_id = "Anonymous"
-        if g.trace_context and "user_id" in g.trace_context:
+        if hasattr(g, "trace_context") and "user_id" in g.trace_context:
             user_id = g.trace_context["user_id"]
         return "X-User-Id", user_id
 
@@ -105,7 +107,7 @@ def opencencus_trace_extractor(exporter, header, propogator):
 def opencencus_trace_delegator(header, propogator):
     def delagator():
         trace = ""
-        if g.trace_context and "tracer" in g.trace_context:
+        if hasattr(g, "trace_context") and "tracer" in g.trace_context:
             span_context = g.trace_context["tracer"].span_context
             trace = propogator.to_header(span_context)
         return header, trace
