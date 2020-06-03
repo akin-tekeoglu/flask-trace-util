@@ -4,6 +4,7 @@ Contains Gunicorn specific loggers
 import json
 import traceback
 from gunicorn.glogging import Logger
+from flask_trace_util.util import extract_gcloud_trace
 
 
 class GunicornLogger(Logger):
@@ -70,3 +71,26 @@ class GunicornLogger(Logger):
             self.access_log.info(access_log_format, safe_atoms)
         except:
             self.error(traceback.format_exc())
+
+
+class GCloudGunicornAccesLogger(GunicornLogger):
+    """ Access logger for flask, gunicorn and google cloud
+
+    Arguments:
+        GunicornLogger {type} -- flask trace util GunicornLogger
+    """
+
+    project_id = None
+
+    def get_custom_variables(self, resp, req):
+        """Returns custom variables for acces logging
+
+        Returns:
+            dict -- custom env variables
+        """
+        cvars = {}
+        for k, value in req.headers:
+            if k.lower() == "X-Cloud-Trace-Context".lower():
+                trace_key, trace_value = extract_gcloud_trace(value, self.project_id)
+                cvars[trace_key] = trace_value
+        return cvars

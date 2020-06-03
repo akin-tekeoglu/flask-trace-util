@@ -1,44 +1,36 @@
 """
 Main class for trace operations
 """
-from flask import g
+from flask import g, request
 import requests
+from flask_trace_util.util import extract_gcloud_trace
 
 
 class _FlaskTrace:
     def __init__(self):
         self.app = None
-        self.config = None
+        self.extractor = None
+        self.delegator = None
 
-    def init_app(self, app, config):
-        """Init app
-
-        Arguments:
-            app {object} -- flask app
-            config {object} -- trace configuration
-
+    def init_app(self, app, extractor=None, delegator=None):
+        """
+            Init app
         """
         self.app = app
-        self.config = config
+        self.extractor = extractor = extractor
+        self.delegator = delegator
         if app is None:
             raise Exception("app cant be None")
 
-        if config is None:
-            raise Exception("config cant be None")
+        if extractor is None:
+            raise Exception("extractor cant be None")
 
-        if "extractor" not in config:
-            raise Exception(
-                "config must include extractor key for header extraction process"
-            )
-
-        if "delegator" not in config:
-            raise Exception(
-                "config must include delegator key for trace delegation to subsequent requests"
-            )
+        if delegator is None:
+            raise Exception("delegator cant be None")
 
         @app.before_request
         def init_session():  # pylint: disable=unused-variable
-            g.trace = config["extractor"]()
+            g.trace = extractor()
 
         @app.after_request
         def destroy_session(
@@ -59,9 +51,38 @@ class _FlaskTrace:
         """
         if "headers" not in kwargs:
             kwargs["headers"] = {}
-        header_name, header_value = self.config["delegator"]()
+        header_name, header_value = self.delegator()
         kwargs["headers"][header_name] = header_value
         return requests.request(method, url, **kwargs)
 
 
-flask_trace = _FlaskTrace()
+def gcloud_trace_extractor(project_id):
+    """Trace extractor for google cloud GKE
+
+    Arguments:
+        project_id {str} -- project id
+    """
+
+    def extractor():
+        trace = request.headers.get("X-Cloud-Trace-Context")
+        _, trace = extract_gcloud_trace(trace, project_id)
+        return trace
+
+    return extractor
+
+
+def gcloud_trace_delegator():
+    """Trace delegator for google cloud GKE
+
+    Arguments:
+        trace {str} -- trace
+    """
+
+    def delegator():
+        if g.trace:
+            header = g.trace.split("/")[-1]
+            return "X-Cloud-Trace-Context", header
+        else:
+            return "X-Cloud-Trace-Context", ""
+
+    return delegator
