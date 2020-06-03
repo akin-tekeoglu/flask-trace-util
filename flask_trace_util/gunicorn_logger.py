@@ -5,6 +5,7 @@ import json
 from datetime import datetime
 import traceback
 from gunicorn.glogging import Logger
+import requests
 from flask_trace_util.util import extract_gcloud_trace
 
 
@@ -31,6 +32,18 @@ class GunicornLogger(Logger):
         "request_time": "%(L)s",
         "method": "%(m)s",
     }
+
+    def get_custom_variables(self, resp, req):
+        """Override this function to provide custom variable
+
+        Arguments:
+            resp {object} -- gunicorn resp
+            req {object} -- gunicorn resp
+
+        Returns:
+            dict -- custom variables
+        """
+        return {}
 
     def access(self, resp, req, environ, request_time):
         """
@@ -81,6 +94,14 @@ class GCloudGunicornAccesLogger(GunicornLogger):
     """
 
     project_id = None
+
+    def __init__(self, cfg):
+        resp = requests.get(
+            "http://metadata.google.internal/computeMetadata/v1/project/project-id",
+            headers={"Metadata-Flavor": "Google"},
+        )
+        self.project_id = resp.text
+        super().__init__(cfg)
 
     def get_custom_variables(self, resp, req):
         """Returns custom variables for acces logging
