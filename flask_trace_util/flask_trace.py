@@ -107,6 +107,8 @@ def simple_user_id_extractor():
 
     def extractor():
         user_id = request.headers.get("X-User-Id")
+        if not user_id:
+            user_id = "Anonymous"
         return user_id
 
     return extractor
@@ -117,7 +119,7 @@ def simple_user_id_delegator():
     """
 
     def delegator():
-        user_id = ""
+        user_id = "Anonymous"
         if g.user_id:
             user_id = g.user_id
         return "X-User-Id", user_id
