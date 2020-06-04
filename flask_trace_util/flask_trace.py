@@ -31,6 +31,7 @@ class _FlaskTrace:
 
         if self.delegator is None:
             raise Exception("delegator cant be None")
+        _requests = self.requests()
 
         @app.before_request
         def init_session():  # pylint: disable=unused-variable
@@ -39,7 +40,7 @@ class _FlaskTrace:
             trace_context = self.extractor()
             if "tracer" in trace_context:
                 trace_context["tracer"].start_span(name=request.url)
-                trace_context["request"] = self.request
+                trace_context["requests"] = _requests
             g.trace_context = trace_context
 
         @app.after_request
@@ -50,22 +51,32 @@ class _FlaskTrace:
                 g.trace_context["tracer"].tracer.finish()
             return response
 
-    def request(self, method, url, **kwargs):
-        """Proxy request function which uses extracted trace field
+    def _request(self, method):
+        outer = self
 
-        Arguments:
-            method {string} -- http method
-            url {string} -- url
+        def __request(self, url, **kwargs):
+            if "headers" not in kwargs:
+                kwargs["headers"] = {}
+            headers = outer.delegator()
+            for header_name, header_value in headers.items():
+                kwargs["headers"][header_name] = header_value
+            return requests.request(method, url, **kwargs)
 
-        Returns:
-            object -- requests response object
-        """
-        if "headers" not in kwargs:
-            kwargs["headers"] = {}
-        headers = self.delegator()
-        for header_name, header_value in headers.items():
-            kwargs["headers"][header_name] = header_value
-        return requests.request(method, url, **kwargs)
+        return __request
+
+    def requests(self):
+        ProxyRequest = type(
+            "ProxyRequest",
+            (object,),
+            {
+                "get": self._request("get"),
+                "post": self._request("post"),
+                "put": self._request("put"),
+                "patch": self._request("patch"),
+                "delete": self._request("delete"),
+            },
+        )
+        return ProxyRequest()
 
 
 def user_id_extractor():
