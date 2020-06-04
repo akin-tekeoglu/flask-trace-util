@@ -39,6 +39,7 @@ class _FlaskTrace:
             trace_context = self.extractor()
             if "tracer" in trace_context:
                 trace_context["tracer"].start_span(name=request.url)
+                trace_context["request"] = self.request
             g.trace_context = trace_context
 
         @app.after_request
