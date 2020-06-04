@@ -12,20 +12,20 @@ from .flask_trace import (
     opencencus_trace_delegator,
     trace_delegator,
     trace_extractor,
+    trace_serializer,
+    user_id_serializer,
+    gcloud_trace_serializer,
+    gcloud_trace_json_logger,
 )
 
 
 sde = StackdriverExporter()
 
-
-delegators = trace_delegator(
-    [
-        user_id_delegator(),
-        opencencus_trace_delegator(
-            "X-Cloud-Trace-Context", GoogleCloudFormatPropagator()
-        ),
-    ]
+uid = user_id_delegator()
+otd = (
+    opencencus_trace_delegator("X-Cloud-Trace-Context", GoogleCloudFormatPropagator()),
 )
+delegators = trace_delegator([uid, otd])
 extractors = trace_extractor(
     [
         user_id_extractor(),
@@ -35,5 +35,11 @@ extractors = trace_extractor(
     ]
 )
 
-
 gcloud_opencencus_trace = _FlaskTrace(extractor=extractors, delegator=delegators,)
+
+
+def init_gcloud_flask_trace_json_logger():
+    serializers = trace_serializer(
+        [user_id_serializer(uid), gcloud_trace_serializer(otd)]
+    )
+    gcloud_trace_json_logger(serializers)()

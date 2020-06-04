@@ -12,6 +12,7 @@ twine="*"
 gunicorn="*"
 opencensus = "*"
 opencensus-ext-stackdriver = "*"
+python-json-logger= "*"
 
 [requires]
 python_version = "3.7"

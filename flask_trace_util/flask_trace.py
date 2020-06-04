@@ -1,9 +1,10 @@
 """
 Main class for trace operations
 """
+import logging
 from flask import g, request
+from pythonjsonlogger import jsonlogger
 import requests
-
 from opencensus.trace.tracer import Tracer
 from opencensus.trace.samplers import AlwaysOnSampler
 
@@ -135,3 +136,76 @@ def trace_delegator(delegators):
         return headers
 
     return delegator
+
+
+def trace_serializer(serializers):
+    def serializer():
+        serialized = {}
+        for s in serializers:
+            k, val = s()
+            serialized[k] = val
+        return serialized
+
+    return serializer
+
+
+def gcloud_trace_serializer(delegator):
+    def serializer():
+        trace_val = ""
+        _, val = delegator()
+        if val:
+            trace_val = val.split("/")[0]
+        return "logging.googleapis.com/trace", trace_val
+
+    return serializer
+
+
+def user_id_serializer(delegator):
+    def serializer():
+        _, user_id = delegator()
+        return "user_id", user_id
+
+    return serializer
+
+
+class _FlaskTraceFormatter(jsonlogger.JsonFormatter):
+    def __init__(self, *args, trace_serializer=None, **kwargs):
+        kwargs["timestamp"] = True
+        self.trace_serializer = trace_serializer
+        super().__init__(*args, **kwargs)
+
+    def add_fields(self, log_record, record, message_dict):
+        super().add_fields(log_record, record, message_dict)
+        if self.trace_serializer:
+            serialized = self.trace_serializer()
+            log_record.update(serialized)
+
+
+class _GCloudJsonFormatter(_FlaskTraceFormatter):
+    def add_fields(self, log_record, record, message_dict):
+        super().add_fields(log_record, record, message_dict)
+        if log_record.get("level"):
+            log_record["severity"] = log_record["level"].upper()
+        else:
+            log_record["severity"] = record.levelname
+
+
+def trace_logger(Formatter):
+    logger = logging.getLogger("flask_trace_json_logger")
+    log_handler = logging.StreamHandler()
+    formatter = Formatter()
+    log_handler.setFormatter(formatter)
+    logger.addHandler(log_handler)
+    logger.setLevel(logging.DEBUG)
+
+
+def gcloud_trace_json_logger(trace_serializer):
+    def logger():
+        trace_logger(
+            lambda: _GCloudJsonFormatter(
+                "(timestamp) (severity) (name) (message)",
+                trace_serializer=trace_serializer,
+            )
+        )
+
+    return logger
