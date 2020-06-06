@@ -78,6 +78,9 @@ class GunicornLogger(Logger):
             return
         atoms = self.atoms(resp, req, environ, request_time)
         atoms["t"] = str(datetime.utcnow())
+        for k, value in atoms.items():
+            if '"' in value:
+                atoms[k] = value.replace('"', "'")
         safe_atoms = self.atoms_wrapper_class(atoms)
 
         try:
