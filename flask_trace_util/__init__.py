@@ -4,42 +4,59 @@ Base module for flask_trace_util
 from opencensus.common.transports.async_ import AsyncTransport
 from opencensus.ext.stackdriver.trace_exporter import StackdriverExporter
 from opencensus.trace.propagation.google_cloud_format import GoogleCloudFormatPropagator
-from .flask_trace import (
-    _FlaskTrace,
-    user_id_extractor,
-    user_id_delegator,
-    opencencus_trace_extractor,
-    opencencus_trace_delegator,
-    trace_delegator,
-    trace_extractor,
-    trace_serializer,
-    user_id_serializer,
-    gcloud_trace_serializer,
-    gcloud_trace_json_logger,
-)
+from opencensus.trace.tracer import Tracer
+from opencensus.trace.samplers import AlwaysOnSampler
+from flask import request
+from .flask_trace import FlaskTrace
+from .util import GcloudJsonFormatter, get_gcloud_project_id
 
 
-sde = StackdriverExporter()
-
-uid = user_id_delegator()
-otd = (
-    opencencus_trace_delegator("X-Cloud-Trace-Context", GoogleCloudFormatPropagator()),
-)
-delegators = trace_delegator([uid, otd])
-extractors = trace_extractor(
-    [
-        user_id_extractor(),
-        opencencus_trace_extractor(
-            sde, "X-Cloud-Trace-Context", GoogleCloudFormatPropagator()
-        ),
-    ]
-)
-
-gcloud_opencencus_trace = _FlaskTrace(extractor=extractors, delegator=delegators,)
+exporter = StackdriverExporter()
+propogator = GoogleCloudFormatPropagator()
 
 
-def init_gcloud_flask_trace_json_logger():
-    serializers = trace_serializer(
-        [user_id_serializer(uid), gcloud_trace_serializer(otd)]
+def gcloud_trace_extractor():
+    return request.headers.get("X-Cloud-Trace-Context")
+
+
+def gcloud_opencensus_tracer_generator(trace):
+    span_context = propogator.from_header(trace)
+    tracer = Tracer(
+        exporter=exporter, span_context=span_context, sampler=AlwaysOnSampler()
     )
-    gcloud_trace_json_logger(serializers)()
+    return tracer
+
+
+def opencensus_start_trace(tracer):
+    tracer.start_span(name=request.url)
+
+
+def opencensus_end_trace(tracer):
+    tracer.finish()
+
+
+def gcloud_opencensus_trace_propagator(trace, tracer):
+    trace_header = propogator.to_header(tracer.span_context)
+    return "X-Cloud-Trace-Context", trace_header
+
+
+project_id = get_gcloud_project_id()
+
+
+def gcloud_trace_log_propagator():
+    header = request.headers.get("X-Cloud-Trace-Context")
+    if header:
+        trace = header.split("/")[0]
+    return "trace", f"projects/{project_id}/traces/{trace}"
+
+
+flask_trace = FlaskTrace(
+    trace_extractor=gcloud_trace_extractor,
+    tracer_generator=gcloud_opencensus_tracer_generator,
+    start_trace=opencensus_start_trace,
+    end_trace=opencensus_end_trace,
+    trace_propagator=gcloud_opencensus_trace_propagator,
+    init_logger=True,
+    trace_log_propagator=gcloud_trace_log_propagator,
+    formatter=GcloudJsonFormatter,
+)
