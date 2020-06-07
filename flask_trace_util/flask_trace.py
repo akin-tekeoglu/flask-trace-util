@@ -108,8 +108,11 @@ class FlaskTrace:
         def before_request():
             if not self.trace_enabled or (self.skip_index and request.path == "/"):
                 return
+            g.flask_trace_context = {}
             g.flask_trace_context["trace"] = self.trace_extractor()
-            g.flask_trace_context["tracer"] = self.tracer_generator(g.trace)
+            g.flask_trace_context["tracer"] = self.tracer_generator(
+                g.flask_trace_context["trace"]
+            )
             if self.start_trace:
                 self.start_trace(g.flask_trace_context["tracer"])
 

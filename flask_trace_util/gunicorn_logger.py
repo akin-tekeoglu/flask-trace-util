@@ -6,7 +6,6 @@ from datetime import datetime
 import traceback
 from gunicorn.glogging import Logger
 import requests
-from flask_trace_util.util import extract_gcloud_trace
 
 
 class GunicornLogger(Logger):
@@ -79,7 +78,7 @@ class GunicornLogger(Logger):
         atoms = self.atoms(resp, req, environ, request_time)
         atoms["t"] = str(datetime.utcnow())
         for k, value in atoms.items():
-            if '"' in value:
+            if isinstance(value, str) and '"' in value:
                 atoms[k] = value.replace('"', "'")
         safe_atoms = self.atoms_wrapper_class(atoms)
 
@@ -115,6 +114,8 @@ class GCloudGunicornAccesLogger(GunicornLogger):
         cvars = {}
         for k, value in req.headers:
             if k.lower() == "X-Cloud-Trace-Context".lower():
-                trace_key, trace_value = extract_gcloud_trace(value, self.project_id)
-                cvars[trace_key] = trace_value
+                trace = value.split("/")[0]
+                cvars[
+                    "logging.googleapis.com/trace"
+                ] = f"projects/{self.project_id}/traces/{trace}"
         return cvars

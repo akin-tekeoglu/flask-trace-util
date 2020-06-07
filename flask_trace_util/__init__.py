@@ -18,17 +18,19 @@ def gcloud_trace_extractor():
     return request.headers.get("X-Cloud-Trace-Context")
 
 
-def gcloud_opencensus_tracer_generator():
+exporter = None
+try:
     exporter = StackdriverExporter()
+except:
+    pass
 
-    def wrapper(trace):
-        span_context = propogator.from_header(trace)
-        tracer = Tracer(
-            exporter=exporter, span_context=span_context, sampler=AlwaysOnSampler()
-        )
-        return tracer
 
-    return wrapper
+def gcloud_opencensus_tracer_generator(trace):
+    span_context = propogator.from_header(trace)
+    tracer = Tracer(
+        exporter=exporter, span_context=span_context, sampler=AlwaysOnSampler()
+    )
+    return tracer
 
 
 def opencensus_start_trace(tracer):
@@ -56,7 +58,7 @@ def gcloud_trace_log_propagator():
 
 flask_trace = FlaskTrace(
     trace_extractor=gcloud_trace_extractor,
-    tracer_generator=gcloud_opencensus_tracer_generator(),
+    tracer_generator=gcloud_opencensus_tracer_generator,
     start_trace=opencensus_start_trace,
     end_trace=opencensus_end_trace,
     trace_propagator=gcloud_opencensus_trace_propagator,
