@@ -10,8 +10,11 @@ class NoopTracer:
     """Fallback tracer for local development
     """
 
+    def _noop(self, *args, **kwargs):
+        pass
+
     def __getattr__(self, item):
-        return None
+        return self._noop
 
 
 class Requests:
