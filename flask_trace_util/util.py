@@ -16,10 +16,11 @@ class GcloudJsonFormatter(jsonlogger.JsonFormatter):
 
 
 def get_gcloud_project_id():
-    r = requests.get(
-        "http://metadata.google.internal/computeMetadata/v1/project/project-id",
-        headers={"Metadata-Flavor": "Google"},
-    )
-    if r.status_code > 399:
+    try:
+        r = requests.get(
+            "http://metadata.google.internal/computeMetadata/v1/project/project-id",
+            headers={"Metadata-Flavor": "Google"},
+        )
+        return r.text
+    except:
         return "PROJECT_ID_NOT_FOUND"
-    return r.text
